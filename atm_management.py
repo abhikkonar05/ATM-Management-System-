@@ -1,61 +1,84 @@
-acc_holders={
-    'Name':'Abhik',
-    'Account Number':1234567890,
-    'PIN':1234,
-    'Balance':39875
-}
-User_pin=int(input("Enter your PIN: "))
-if len(str(User_pin))!=4:
-    print("Invalid PIN format. Please enter a 4-digit PIN.")
-    exit()
-attempt=3
-while attempt>0:
-    if User_pin==acc_holders['PIN']:
-        print("Login successful.")
-        print(f"Welcome {acc_holders['Name']}")
-        print("1. Check Balance")
-        print("2. Deposit")
-        print("3. Withdraw")
-        print("4. Change PIN")
-        print("5. Exit")
-        choice=int(input("Enter your choice: "))
-        if choice==1:   
-            print(f"Your current balance is: {acc_holders['Balance']}")
-        elif choice==2:
-            deposit_amount=int(input("Enter amount to deposit: "))
-            if deposit_amount%500==0:
-                acc_holders['Balance']+=deposit_amount
-                print(f"Amount deposited successfully. New balance is: {acc_holders['Balance']}")
-                break 
-            else:
-                print("Invalid deposit amount.")  
-                deposit_amount=int(input("Enter amount to deposit: "))
-        elif choice==3:
-            withdraw_amount=int(input("Enter amount to withdraw: "))
-            if withdraw_amount%500==0:
-                if withdraw_amount<=acc_holders['Balance']:
-                    acc_holders['Balance']-=withdraw_amount
-                    print(f"Amount withdrawn successfully. New balance is: {acc_holders['Balance']}")
-                else:
-                    print("Insufficient balance.")
-            else:
-                print("Invalid withdrawal amount.")
-        elif choice==4:
-            new_pin=int(input("Enter new 4-digit PIN: "))
-            if len(str(new_pin))==4:
-                acc_holders['PIN']=new_pin
-                print("PIN changed successfully.")
-            else:
-                print("Invalid PIN format.")
-        elif choice==5:
-            print("Thank you for using our ATM service.")
-            exit()       
+from flask import Flask, render_template, request, redirect, url_for, session,flash
 
+app = Flask(__name__)
+app.secret_key = "supersecretkey"
+
+
+acc_holders = {
+    'Name': 'Abhik',
+    'Account Number': 1234567890,
+    'PIN': 1234,
+    'Balance': 39875
+}
+
+@app.route('/')
+def home():
+    return render_template("login.html")
+
+@app.route('/login', methods=['POST'])
+def login():
+    pin = request.form['pin']
+
+    if len(pin) != 4 or not pin.isdigit():
+        return "Invalid PIN format"
+
+    if int(pin) == acc_holders['PIN']:
+        session['user'] = acc_holders['Name']
+        return redirect(url_for('dashboard'))
     else:
-        attempt-=1
-        if attempt>0:
-            print(f"Invalid PIN. You have {attempt} attempts left.")
-            User_pin=int(input("Enter your PIN: "))
+        return "Invalid PIN"
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user' in session:
+        return render_template("dashboard.html", name=acc_holders['Name'], balance=acc_holders['Balance'])
+    return redirect(url_for('home'))
+
+@app.route('/deposit', methods=['GET', 'POST'])
+def deposit():
+    if request.method == 'POST':
+        amount = int(request.form['amount'])
+        if amount % 500 == 0:
+            acc_holders['Balance'] += amount
+            return redirect(url_for('dashboard'))
         else:
-            print("Too many failed attempts. Your account has been blocked.")
-            exit()
+            return "Deposit must be multiple of 500"
+    return render_template("deposit.html")
+
+@app.route('/withdraw', methods=['GET', 'POST'])
+def withdraw():
+    if request.method == 'POST':
+        amount = int(request.form['amount'])
+        if amount % 500 != 0:
+            return "Withdraw must be multiple of 500"
+        if amount > acc_holders['Balance']:
+            return "Insufficient Balance"
+        acc_holders['Balance'] -= amount
+        return redirect(url_for('dashboard'))
+    return render_template("withdraw.html")
+
+@app.route('/change_pin', methods=['GET', 'POST'])
+def change_pin():
+    if request.method == 'POST':
+        pin = request.form['pin']
+        if int(pin) != acc_holders['PIN']:
+            return "Incorrect current PIN"
+        else:
+            new_pin = request.form['new_pin']
+        if len(new_pin) == 4 and new_pin.isdigit():
+            acc_holders['PIN'] = int(new_pin)
+            flash("PIN changed successfully!","success")
+            return redirect(url_for('dashboard'))
+             
+        else:
+            return "Invalid PIN format"
+    return render_template("change_pin.html")
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect(url_for('home'))
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
