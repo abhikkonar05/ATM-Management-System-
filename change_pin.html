@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+
+    <title>Change PIN</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Change PIN</h2>
+    <form method="POST">
+        <input type="password" name="pin" placeholder="Current 4-digit PIN" required>
+        <input type="password" name="new_pin" placeholder="New 4-digit PIN" required>
+        <button type="submit">Change PIN</button>
+    </form>
+</body>
+</html>
